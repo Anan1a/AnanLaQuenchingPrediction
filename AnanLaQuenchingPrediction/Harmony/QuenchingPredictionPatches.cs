@@ -37,10 +37,11 @@ namespace AnanLaQuenchingPrediction.Harmony
             try
             {
                 // ── 守卫条件 ──
-                // 最高频：大多数帧物品正常冷却
-                if (slot.Empty || slot.Itemstack == null) return;
-                // willbreak 仅由服务端原方法设置，客户端原方法直接 return
+                // 客户端不处理逻辑（原版 IsGettingCooled 在客户端无操作，willbreak 不会被设置）
                 if (world.Side == EnumAppSide.Client) return;
+
+                // 物品碎裂后槽位变空时跳过
+                if (slot.Empty) return;
 
                 var stack = slot.Itemstack;
 
