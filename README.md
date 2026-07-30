@@ -8,16 +8,48 @@ A Vintage Story mod that warns you when an item is about to shatter during quenc
 
 ## 功能 / Features
 
-- 当物品即将在淬火中碎裂时，底部弹出红色警告
+- 当物品即将在淬火中碎裂时，弹出预警提示
 - 仅在淬火真正有碎裂风险时预警，不干扰正常淬火
 - 预警发出后不会重复提示
-- Red warning at the bottom of the screen when an item is about to shatter during quenching
+- **可配置**：支持开关预警，切换显示风格（底部提示栏 / 聊天栏 / 中央发现动画）
+- Warning prompt when an item is about to shatter during quenching
 - Only warns when there is an actual risk of shattering, does not interfere with normal quenching
 - Warning is only shown once per item
+- **Configurable**: toggle warnings on/off, choose display style (BottomError / Chat / Discovery)
+
+## 配置 / Configuration
+
+模组启动后在 `ModConfig` 目录生成 `ananlaquenchingprediction_client_config.json`，可手动编辑：
+
+```json
+{
+  "PredictionPrompt": true,
+  "DisplayMode": "BottomError"
+}
+```
+
+| 字段 | 说明 | 可选值 |
+|------|------|--------|
+| `PredictionPrompt` | 是否显示预警提示 | `true` / `false` |
+| `DisplayMode` | 显示风格 | `BottomError`（底部提示栏）、`Chat`（聊天栏）、`Discovery`（中央发现动画） |
+
+English equivalent:
+
+```json
+{
+  "PredictionPrompt": true,
+  "DisplayMode": "BottomError"
+}
+```
+
+| Field | Description | Options |
+|-------|-------------|---------|
+| `PredictionPrompt` | Enable/disable warning prompts | `true` / `false` |
+| `DisplayMode` | Display style | `BottomError`, `Chat`, `Discovery` |
 
 ## 安装 / Installation
 
-1. 下载 `ananlaquenchingprediction_1.0.0.zip` / Download the zip
+1. 下载 `ananlaquenchingprediction_1.1.0.zip` / Download the zip
 2. 解压到游戏目录的 `Mods` 文件夹 / Extract into the game's `Mods` folder
 3. 启动游戏，模组自动生效 / Launch the game, the mod activates automatically
 
