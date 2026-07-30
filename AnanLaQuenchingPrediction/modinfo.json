@@ -5,8 +5,9 @@
     "authors": [
         "AnanLa"
     ],
-    "description": "To be added",
+    "description": "淬火预警：检测物品即将碎裂时发出警告，降低反复烧铁搓工具的精神损耗。客户端可选安装。",
     "version": "1.0.0",
+    "requiredOnClient": false,
     "dependencies": {
         "game": "1.22.3"
     }
