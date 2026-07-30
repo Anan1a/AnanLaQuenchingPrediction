@@ -37,20 +37,10 @@ namespace AnanLaQuenchingPrediction.Harmony
             try
             {
                 // ── 守卫条件 ──
-                // 客户端不处理逻辑（原版 IsGettingCooled 在客户端无操作，willbreak 不会被设置）
-                if (world.Side == EnumAppSide.Client) return;
-
-                // 物品碎裂后槽位变空时跳过
-                if (slot.Empty) return;
-
-                var stack = slot.Itemstack;
-
-                // 次高频：已预警过的物品每帧命中，避免重复查 willbreak
-                if (stack.TempAttributes.GetBool("breakPredictionWarned")) return;
-
-                // 检测 willbreak：true 表示物品即将碎裂
-                if (!stack.TempAttributes.GetBool("willbreak")) return;
-                stack.TempAttributes.SetBool("breakPredictionWarned", true);
+                // 跳过条件：客户端/空槽/willbreak 未触发/已预警
+                if (world.Side == EnumAppSide.Client || slot.Empty ||
+                    !slot.Itemstack.TempAttributes.GetBool("willbreak") ||
+                    slot.Itemstack.TempAttributes.GetBool("breakPredictionWarned")) return;
 
                 // ── 通过槽位回溯所属玩家 ──
                 var player = FindPlayerFromSlot(slot);
@@ -58,6 +48,9 @@ namespace AnanLaQuenchingPrediction.Harmony
 
                 // ── 发送预警通知 ──
                 SendWarning(player, PredictionEventType.BreakWarning);
+
+                // ── 标记已预警，防止下一帧重复触发 ──
+                slot.Itemstack.TempAttributes.SetBool("breakPredictionWarned", true);
             }
             catch (Exception ex)
             {
@@ -77,11 +70,9 @@ namespace AnanLaQuenchingPrediction.Harmony
         {
             try
             {
-                if (currentState != "quench") return;
-
-                // 确认淬火已真正完成
-                string newState = __instance.GetState(itemstack);
-                if (newState != "settled") return;
+                // 跳过条件：客户端，或淬火状态不正确/未完成
+                if (world.Side == EnumAppSide.Client || currentState != "quench" ||
+                    __instance.GetState(itemstack) != "settled") return;
 
                 // 清理临时标记，避免残留影响后续淬火
                 itemstack.TempAttributes.RemoveAttribute("breakPredictionWarned");
