@@ -14,13 +14,13 @@ namespace AnanLaQuenchingPrediction.Harmony
         /// <summary>服务端→客户端的网络通道。</summary>
         internal static IServerNetworkChannel NotificationChannel { get; set; }
 
-        /// <summary>发送预警通知包。通道未注册或非服务端玩家时静默跳过。</summary>
-        private static void SendWarning(IPlayer player)
+        /// <summary>发送预测通知包。通道未注册或非服务端玩家时静默跳过。</summary>
+        private static void SendWarning(IPlayer player, PredictionEventType eventType)
         {
             if (player is not IServerPlayer serverPlayer) return;
             NotificationChannel?.SendPacket(new PredictionPacket
             {
-                WarningMessage = "break_warning"
+                EventType = eventType
             }, serverPlayer);
         }
 
@@ -56,7 +56,7 @@ namespace AnanLaQuenchingPrediction.Harmony
                 if (player == null) return;
 
                 // ── 发送预警通知 ──
-                SendWarning(player);
+                SendWarning(player, PredictionEventType.BreakWarning);
             }
             catch (Exception ex)
             {

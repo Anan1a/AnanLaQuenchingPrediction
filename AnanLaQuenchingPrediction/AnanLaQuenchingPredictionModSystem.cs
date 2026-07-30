@@ -96,13 +96,18 @@ namespace AnanLaQuenchingPrediction
         }
 
         /// <summary>
-        /// 处理服务端推送的淬火预警包，在客户端根据配置显示警告。
+        /// 处理服务端推送的淬火预警包，根据事件类型选择语言模板渲染。
         /// </summary>
         private void OnPrediction(PredictionPacket packet)
         {
             if (!clientConfig.PredictionPrompt) return;
 
-            string msg = Lang.Get("ananlaquenchingprediction:" + packet.WarningMessage);
+            string msg = packet.EventType switch
+            {
+                PredictionEventType.BreakWarning => Lang.Get("ananlaquenchingprediction:break_warning"),
+                _ => null
+            };
+            if (msg == null) return;
 
             // 根据本地 DisplayMode 配置决定渲染方式
             switch (clientConfig.DisplayMode)
