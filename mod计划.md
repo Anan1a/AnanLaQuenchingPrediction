@@ -1,0 +1,4 @@
+用0Harmony实现mod
+在CollectibleBehaviorQuenchable.IsGettingCooled 后缀识别willbreak参数
+true时发出警告
+IsGettingCooled是每帧运行的
