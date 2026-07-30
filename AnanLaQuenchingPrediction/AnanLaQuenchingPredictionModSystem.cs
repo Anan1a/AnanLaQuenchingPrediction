@@ -6,6 +6,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
+using AnanLaQuenchingPrediction.Config;
 using AnanLaQuenchingPrediction.Harmony;
 using AnanLaQuenchingPrediction.Shared;
 
@@ -15,6 +16,8 @@ namespace AnanLaQuenchingPrediction
     public class AnanLaQuenchingPredictionModSystem : ModSystem
     {
         private ICoreClientAPI clientApi;
+        /// <summary>客户端缓存的配置，决定提示显示方式和渲染风格。</summary>
+        private ClientConfig clientConfig;
 
         /// <summary>
         /// 服务端初始化入口。注册网络通道、安装 Harmony 补丁。
@@ -80,6 +83,12 @@ namespace AnanLaQuenchingPrediction
             base.StartClientSide(api);
             clientApi = api;
 
+            // ── 加载客户端本地配置 ──
+            // PredictionPrompt、DisplayMode 由客户端本地控制，不与服务端同步
+            clientConfig = api.LoadModConfig<ClientConfig>("ananlaquenchingprediction_client_config.json");
+            clientConfig ??= new ClientConfig();
+            api.StoreModConfig(clientConfig, "ananlaquenchingprediction_client_config.json");
+
             // ── 注册客户端网络通道并绑定消息处理器 ──
             api.Network.RegisterChannel("quenchPredict")
                 .RegisterMessageType<PredictionPacket>()
@@ -87,12 +96,30 @@ namespace AnanLaQuenchingPrediction
         }
 
         /// <summary>
-        /// 处理服务端推送的淬火预警包，在客户端显示警告。
+        /// 处理服务端推送的淬火预警包，在客户端根据配置显示警告。
         /// </summary>
         private void OnPrediction(PredictionPacket packet)
         {
+            if (!clientConfig.PredictionPrompt) return;
+
             string msg = Lang.Get("ananlaquenchingprediction:" + packet.WarningMessage);
-            clientApi.TriggerIngameError(clientApi, "quench_break_warning", msg);
+
+            // 根据本地 DisplayMode 配置决定渲染方式
+            switch (clientConfig.DisplayMode)
+            {
+                case Config.MessageDisplayMode.Chat:
+                    // 聊天栏：左下角淡入显示
+                    clientApi.ShowChatMessage(msg);
+                    break;
+                case Config.MessageDisplayMode.Discovery:
+                    // 中央发现动画：居中淡入淡出
+                    clientApi.TriggerIngameDiscovery(clientApi, "quench_break_warning", msg);
+                    break;
+                default:
+                    // 底部提示栏：红色震动文字，居中显示（默认行为）
+                    clientApi.TriggerIngameError(clientApi, "quench_break_warning", msg);
+                    break;
+            }
         }
 
         /// <summary>
