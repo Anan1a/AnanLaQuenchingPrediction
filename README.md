@@ -6,46 +6,71 @@ A Vintage Story mod that warns you when an item is about to shatter during quenc
 
 > 该模组使用 AI（Claude）辅助开发 / This mod was developed with AI (Claude) assistance.
 
+---
+
 ## 功能 / Features
 
 - 当物品即将在淬火中碎裂时，弹出预警提示
 - 仅在淬火真正有碎裂风险时预警，不干扰正常淬火
 - 预警发出后不会重复提示
 - **可配置**：支持开关预警，切换显示风格（底部提示栏 / 聊天栏 / 中央发现动画）
+
 - Warning prompt when an item is about to shatter during quenching
 - Only warns when there is an actual risk of shattering, does not interfere with normal quenching
 - Warning is only shown once per item
 - **Configurable**: toggle warnings on/off, choose display style (BottomError / Chat / Discovery)
 
+---
+
 ## 配置 / Configuration
 
 模组启动后在 `ModConfig` 目录生成 `ananlaquenchingprediction_client_config.json`，可手动编辑：
 
-```json
-{
-  "PredictionPrompt": true,
-  "DisplayMode": "BottomError"
-}
-```
-
-| 字段 | 说明 | 可选值 |
-|------|------|--------|
-| `PredictionPrompt` | 是否显示预警提示 | `true` / `false` |
-| `DisplayMode` | 显示风格 | `BottomError`（底部提示栏）、`Chat`（聊天栏）、`Discovery`（中央发现动画） |
-
-English equivalent:
+The mod generates `ananlaquenchingprediction_client_config.json` in the `ModConfig` folder on first launch:
 
 ```json
 {
-  "PredictionPrompt": true,
-  "DisplayMode": "BottomError"
+    "PredictionPrompt": true,
+    // 是否显示预警提示 / Show warning prompts
+    "DisplayMode": "BottomError"
+    // 显示风格 / Display style:
+    // BottomError = 底部提示栏（默认）/ bottom error bar (default)
+    // Chat = 聊天栏 / chat bar
+    // Discovery = 中央发现动画 / center discovery animation
 }
 ```
 
-| Field | Description | Options |
-|-------|-------------|---------|
-| `PredictionPrompt` | Enable/disable warning prompts | `true` / `false` |
-| `DisplayMode` | Display style | `BottomError`, `Chat`, `Discovery` |
+---
+
+## 提示信息 / Prompt Messages
+
+开启 `PredictionPrompt` 后显示：
+
+When `PredictionPrompt` is enabled:
+
+| 场景 / Scenario | 消息 / Message |
+|------|------|
+| 即将碎裂 / About to shatter | `警告！此物品即将在淬火中碎裂！请立即停止淬火！` |
+
+消息可通过 `DisplayMode` 切换显示风格（`BottomError` 底部提示栏 / `Chat` 聊天栏 / `Discovery` 中央发现动画）。
+
+Message display style can be toggled via `DisplayMode` (`BottomError` / `Chat` / `Discovery`).
+
+---
+
+## 实现原理 / Implementation
+
+使用 Harmony 补丁拦截 `CollectibleBehaviorQuenchable` 的淬火流程：
+
+Uses Harmony patches to intercept the quench logic in `CollectibleBehaviorQuenchable`:
+
+1. **`IsGettingCooled` Postfix**：检测服务端设置的 `willbreak=true` 标记，通过网络通道推送预警到客户端
+2. **`trySettleWorkItem` Postfix**：淬火完成时清理临时标记，避免残留影响后续物品
+
+1. **IsGettingCooled Postfix**: Detects the `willbreak=true` flag set by the server, pushes a warning to the client via network channel
+2. **trySettleWorkItem Postfix**: Cleans up temporary flags on successful quench to prevent stale state
+
+---
 
 ## 姊妹模组联动 / Sister Mod Linkage
 
@@ -63,22 +88,15 @@ When installed alongside [AnanLa's Quenching Guarantee](https://mods.vintagestor
 警告！此物品即将在淬火中碎裂！请立即停止淬火！
 ```
 
+---
+
 ## 安装 / Installation
 
 1. 下载 `ananlaquenchingprediction_1.3.0.zip` / Download the zip
 2. 解压到游戏目录的 `Mods` 文件夹 / Extract into the game's `Mods` folder
 3. 启动游戏，模组自动生效 / Launch the game, the mod activates automatically
 
-## 实现原理 / Implementation
-
-使用 Harmony 补丁拦截 `CollectibleBehaviorQuenchable.IsGettingCooled`：
-
-Uses Harmony patches to intercept the quench logic in `CollectibleBehaviorQuenchable`:
-
-1. **`IsGettingCooled` Postfix**：检测服务端设置的 `willbreak=true` 标记，通过网络通道推送预警到客户端
-2. **`trySettleWorkItem` Postfix**：淬火成功时清理临时标记，避免残留影响后续物品
-3. **IsGettingCooled Postfix**: Detects the `willbreak=true` flag set by the server, pushes a warning to the client via network channel
-4. **trySettleWorkItem Postfix**: Cleans up temporary flags on successful quench to prevent stale state
+---
 
 ## 兼容性 / Compatibility
 
