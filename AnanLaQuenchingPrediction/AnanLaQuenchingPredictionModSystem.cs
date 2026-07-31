@@ -18,6 +18,8 @@ namespace AnanLaQuenchingPrediction
         private ICoreClientAPI clientApi;
         /// <summary>客户端缓存的配置，决定提示显示方式和渲染风格。</summary>
         private ClientConfig clientConfig;
+        /// <summary>姊妹模组（淬火保底）是否已安装，决定是否启用伪同屏协议。</summary>
+        private bool guaranteeModPresent;
 
         /// <summary>
         /// 服务端初始化入口。注册网络通道、安装 Harmony 补丁。
@@ -89,6 +91,9 @@ namespace AnanLaQuenchingPrediction
             clientConfig ??= new ClientConfig();
             api.StoreModConfig(clientConfig, "ananlaquenchingprediction_client_config.json");
 
+            // ── 检测姊妹模组（淬火保底），仅在共存时启用伪同屏协议 ──
+            guaranteeModPresent = api.ModLoader.IsModEnabled("ananlaquenchingguarantee");
+
             // ── 注册客户端网络通道并绑定消息处理器 ──
             api.Network.RegisterChannel("quenchPredict")
                 .RegisterMessageType<PredictionPacket>()
@@ -108,6 +113,15 @@ namespace AnanLaQuenchingPrediction
                 _ => null
             };
             if (msg == null) return;
+
+            // ── 伪同屏协议：仅在姊妹模组（淬火保底）共存时合并待合并消息 ──
+            if (guaranteeModPresent &&
+                clientApi.ObjectCache.Remove("ananla:quenchLastMsg", out object prev) &&
+                prev is (string prevMsg, int prevMode) &&
+                prevMode == (int)clientConfig.DisplayMode)
+            {
+                msg = prevMsg + "\n" + msg;
+            }
 
             // 根据本地 DisplayMode 配置决定渲染方式
             switch (clientConfig.DisplayMode)
