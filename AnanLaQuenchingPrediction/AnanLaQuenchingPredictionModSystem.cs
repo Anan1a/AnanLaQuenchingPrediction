@@ -114,7 +114,8 @@ namespace AnanLaQuenchingPrediction
             };
             if (msg == null) return;
 
-            // ── 伪同屏协议：仅在姊妹模组（淬火保底）共存时合并待合并消息 ──
+            // ── 伪同屏协议：仅在姊妹模组（淬火保底）共存时读取并消费保底侧待合并消息 ──
+            // 保底侧仅单槽显示模式（非聊天栏）才写入，聊天栏天然累积无需合并
             if (guaranteeModPresent &&
                 clientApi.ObjectCache.Remove("ananla:quenchLastMsg", out object prev) &&
                 prev is (string prevMsg, int prevMode) &&
