@@ -4,7 +4,7 @@
 
 A Vintage Story mod that warns you when an item is about to shatter during quenching, reducing the frustration of repeated tool crafting.
 
-游戏版本 / Game version：**1.22.3**
+> 该模组使用 AI（Claude）辅助开发 / This mod was developed with AI (Claude) assistance.
 
 ## 功能 / Features
 
