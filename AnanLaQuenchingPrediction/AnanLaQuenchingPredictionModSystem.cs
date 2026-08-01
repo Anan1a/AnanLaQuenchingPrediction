@@ -21,6 +21,17 @@ namespace AnanLaQuenchingPrediction
         /// <summary>姊妹模组（淬火保底）是否已安装，决定是否启用伪同屏协议。</summary>
         private bool guaranteeModPresent;
 
+        /// <summary>本模组 modid（与 modinfo.json 一致）。</summary>
+        private const string ModId = "ananlaquenchingprediction";
+        /// <summary>姊妹模组（淬火保底）modid。</summary>
+        private const string GuaranteeModId = "ananlaquenchingguarantee";
+        /// <summary>语言键前缀。</summary>
+        private const string LangPrefix = ModId + ":";
+        /// <summary>伪同屏协议共享缓存键（由淬火保底写入，跟随其命名空间）。</summary>
+        private const string QuenchLastMsgKey = GuaranteeModId + ":quenchLastMsg";
+        /// <summary>客户端配置文件。</summary>
+        private const string ClientConfigFile = ModId + "_client_config.json";
+
         /// <summary>
         /// 服务端初始化入口。注册网络通道、安装 Harmony 补丁。
         /// </summary>
@@ -38,7 +49,7 @@ namespace AnanLaQuenchingPrediction
             // ═══ Harmony 补丁（显式 Patch 避免 PatchAll 对 private 方法的兼容性问题）═══
             try
             {
-                var harmony = new HarmonyLib.Harmony("ananlaquenchingprediction");
+                var harmony = new HarmonyLib.Harmony(ModId);
                 var quenchType = typeof(CollectibleBehaviorQuenchable);
 
                 // 1. 补丁 IsGettingCooled Postfix — 检测 willbreak 并预警
@@ -87,12 +98,12 @@ namespace AnanLaQuenchingPrediction
 
             // ── 加载客户端本地配置 ──
             // PredictionPrompt、DisplayMode 由客户端本地控制，不与服务端同步
-            clientConfig = api.LoadModConfig<ClientConfig>("ananlaquenchingprediction_client_config.json");
+            clientConfig = api.LoadModConfig<ClientConfig>(ClientConfigFile);
             clientConfig ??= new ClientConfig();
-            api.StoreModConfig(clientConfig, "ananlaquenchingprediction_client_config.json");
+            api.StoreModConfig(clientConfig, ClientConfigFile);
 
             // ── 检测姊妹模组（淬火保底），仅在共存时启用伪同屏协议 ──
-            guaranteeModPresent = api.ModLoader.IsModEnabled("ananlaquenchingguarantee");
+            guaranteeModPresent = api.ModLoader.IsModEnabled(GuaranteeModId);
 
             // ── 注册客户端网络通道并绑定消息处理器 ──
             api.Network.RegisterChannel("quenchPredict")
@@ -109,7 +120,7 @@ namespace AnanLaQuenchingPrediction
 
             string msg = packet.EventType switch
             {
-                PredictionEventType.BreakWarning => Lang.Get("ananlaquenchingprediction:break_warning"),
+                PredictionEventType.BreakWarning => Lang.Get(LangPrefix + "break_warning"),
                 _ => null
             };
             if (msg == null) return;
@@ -117,7 +128,7 @@ namespace AnanLaQuenchingPrediction
             // ── 伪同屏协议：仅在姊妹模组（淬火保底）共存时读取并消费保底侧待合并消息 ──
             // 保底侧仅单槽显示模式（非聊天栏）才写入，聊天栏天然累积无需合并
             if (guaranteeModPresent &&
-                clientApi.ObjectCache.Remove("ananla:quenchLastMsg", out object prev) &&
+                clientApi.ObjectCache.Remove(QuenchLastMsgKey, out object prev) &&
                 prev is (string prevMsg, int prevMode) &&
                 prevMode == (int)clientConfig.DisplayMode)
             {
@@ -149,8 +160,8 @@ namespace AnanLaQuenchingPrediction
         {
             try
             {
-                var harmony = new HarmonyLib.Harmony("ananlaquenchingprediction");
-                harmony.UnpatchAll("ananlaquenchingprediction");
+                var harmony = new HarmonyLib.Harmony(ModId);
+                harmony.UnpatchAll(ModId);
             }
             catch { }
             base.Dispose();
