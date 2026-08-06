@@ -125,12 +125,14 @@ namespace AnanLaQuenchingPrediction
             };
             if (msg == null) return;
 
-            // ── 伪同屏协议：仅在姊妹模组（淬火保底）共存时读取并消费保底侧待合并消息 ──
-            // 保底侧仅单槽显示模式（非聊天栏）才写入，聊天栏天然累积无需合并
+            // ── 伪同屏协议：仅在姊妹模组（淬火保底）共存且本端为 BottomError 时读取并消费待合并消息 ──
+            // 保底侧仅在 BottomError 写入缓存；聊天栏/Discovery 均不覆盖显示，无需合并
+            // 合并依赖同帧内保底包（quenchNotify）先于本预警包（quenchPredict）到达：
+            // 这是传输层的实践保证而非 API 契约，乱序时安全退化为两条独立消息
             if (guaranteeModPresent &&
+                clientConfig.DisplayMode == Config.MessageDisplayMode.BottomError &&
                 clientApi.ObjectCache.Remove(QuenchLastMsgKey, out object prev) &&
-                prev is (string prevMsg, int prevMode) &&
-                prevMode == (int)clientConfig.DisplayMode)
+                prev is string prevMsg)
             {
                 msg = prevMsg + "\n" + msg;
             }
