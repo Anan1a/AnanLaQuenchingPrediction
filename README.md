@@ -24,23 +24,29 @@ A Vintage Story mod that warns you when an item is about to shatter during quenc
 
 ## 兼容性 / Compatibility
 
-已在 Vintage Story **1.22.3 ~ 1.22.6** 测试通过（modinfo 中 `"game": "1.22.3"` 为测试过的最低版本，更低版本未验证）。
-Tested on Vintage Story **1.22.3 ~ 1.22.6** (`"game": "1.22.3"` in modinfo is the lowest tested version; lower versions untested).
+- 需要 Vintage Story **1.22.3** 及以上，已测 **1.22.3 ~ 1.22.6**（modinfo 中 `"game": "1.22.3"` 为测试过的最低版本，更低版本未验证）
+- 使用游戏内置 Harmony，无需额外依赖
+- 与原版 VSSurvivalMod 兼容
+
+- Requires Vintage Story **1.22.3** or higher, tested on **1.22.3 ~ 1.22.6** (`"game": "1.22.3"` in modinfo is the lowest tested version; lower versions untested)
+- Uses the built-in Harmony library, no extra dependencies
+- Compatible with vanilla VSSurvivalMod
 
 ---
 
 ## 客户端安装要求 / Client Requirement
 
-服务端与客户端**均需安装**本模组。客户端可选仅是理论上的：预警逻辑虽在服务端执行，
+客户端**理论上可选**，但为了实际游玩体验，服务端与客户端**均需安装**本模组：预警逻辑虽在服务端执行，
 但碎裂预警依赖客户端渲染，且与淬火保底的同屏合并需要双方客户端共存。
-客户端不安装时，玩家会无预警地失去物品，因此默认要求客户端安装
-（modinfo 未设置 `requiredOnClient: false`）。
+客户端不安装时，玩家虽有预警机制却收不到任何提示，会在毫无预警时失去物品，
+因此默认要求客户端安装（modinfo 未设置 `requiredOnClient: false`）。
 
-This mod must be installed on **both the server and the client**. Client-optional was theoretical only:
-the warning logic runs server-side, but the shatter warning needs the client to render, and the
-same-screen merge with Quenching Guarantee requires both clients present. Without the client mod,
-players would lose items without any warning, so the client is required by default
-(modinfo does not set `requiredOnClient: false`).
+Client installation is **theoretically optional**, but for the actual gameplay experience this mod
+must be installed on **both the server and the client**: the warning logic runs server-side, but
+the shatter warning needs the client to render, and the same-screen merge with Quenching Guarantee
+requires both clients present.
+Without the client mod, players would keep losing items without any warning, so the client is
+required by default (modinfo does not set `requiredOnClient: false`).
 
 ---
 
@@ -101,7 +107,7 @@ Uses Harmony patches to intercept the quench logic in `CollectibleBehaviorQuench
 When installed alongside [AnanLa's Quenching Guarantee](https://mods.vintagestory.at/ananlaquenchingguarantee), if a guarantee notification and a prediction warning fire in the **same frame**, the two messages merge into **two lines** (pseudo same-screen) instead of overwriting each other.
 
 - 零依赖：两个模组互不引用，可独立安装或同时安装 / Zero dependency: both mods work independently or together
-- 合并条件：双方客户端使用相同的显示风格（`DisplayMode`）/ Merge condition: both clients use the same `DisplayMode`
+- 合并条件：双方客户端均使用 `BottomError`（底部提示栏）显示风格 / Merge condition: both clients use the `BottomError` display style
 - 仓库 / Repository: [AnanLaQuenchingGuarantee](https://github.com/Anan1a/AnanLaQuenchingGuarantee)
 
 示例 / Example（`BottomError` 模式）:
@@ -117,12 +123,3 @@ When installed alongside [AnanLa's Quenching Guarantee](https://mods.vintagestor
 1. 下载 `ananlaquenchingprediction_1.3.1.zip` / Download the zip
 2. 解压到游戏目录的 `Mods` 文件夹 / Extract into the game's `Mods` folder
 3. 启动游戏，模组自动生效 / Launch the game, the mod activates automatically
-
----
-
-## 兼容性 / Compatibility
-
-- 需要 Vintage Story **1.22.3** / Requires Vintage Story **1.22.3**
-- 使用游戏内置 Harmony，无需额外依赖 / Uses the built-in Harmony library, no extra dependencies
-- 与原版 VSSurvivalMod 兼容 / Compatible with vanilla VSSurvivalMod
-- **客户端可选安装**：不装此模组也可正常游玩（仅无预警提示）/ **Client optional**: players without this mod can join and play normally (just no warning prompts)
