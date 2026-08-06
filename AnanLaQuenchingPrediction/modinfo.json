@@ -5,9 +5,8 @@
     "authors": [
         "AnanLa"
     ],
-    "description": "淬火预警：检测物品即将碎裂时发出警告，降低反复烧铁搓工具的精神损耗。支持可配置的提示开关与显示风格（ModConfig 目录下 json）。客户端可选安装。与淬火保底联动：同屏消息合并显示。",
-    "version": "1.3.0",
-    "requiredOnClient": false,
+    "description": "淬火预警：检测物品即将碎裂时发出警告，降低反复烧铁搓工具的精神损耗。支持可配置的提示开关与显示风格（ModConfig 目录下 json）。客户端需安装以显示预警。与淬火保底联动：同屏消息合并显示。",
+    "version": "1.3.1",
     "dependencies": {
         "game": "1.22.3"
     }

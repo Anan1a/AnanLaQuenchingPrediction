@@ -22,6 +22,28 @@ A Vintage Story mod that warns you when an item is about to shatter during quenc
 
 ---
 
+## 兼容性 / Compatibility
+
+已在 Vintage Story **1.22.3 ~ 1.22.6** 测试通过（modinfo 中 `"game": "1.22.3"` 为测试过的最低版本，更低版本未验证）。
+Tested on Vintage Story **1.22.3 ~ 1.22.6** (`"game": "1.22.3"` in modinfo is the lowest tested version; lower versions untested).
+
+---
+
+## 客户端安装要求 / Client Requirement
+
+服务端与客户端**均需安装**本模组。客户端可选仅是理论上的：预警逻辑虽在服务端执行，
+但碎裂预警依赖客户端渲染，且与淬火保底的同屏合并需要双方客户端共存。
+客户端不安装时，玩家会无预警地失去物品，因此默认要求客户端安装
+（modinfo 未设置 `requiredOnClient: false`）。
+
+This mod must be installed on **both the server and the client**. Client-optional was theoretical only:
+the warning logic runs server-side, but the shatter warning needs the client to render, and the
+same-screen merge with Quenching Guarantee requires both clients present. Without the client mod,
+players would lose items without any warning, so the client is required by default
+(modinfo does not set `requiredOnClient: false`).
+
+---
+
 ## 配置 / Configuration
 
 模组启动后在 `ModConfig` 目录生成 `ananlaquenchingprediction_client_config.json`，可手动编辑：
@@ -92,7 +114,7 @@ When installed alongside [AnanLa's Quenching Guarantee](https://mods.vintagestor
 
 ## 安装 / Installation
 
-1. 下载 `ananlaquenchingprediction_1.3.0.zip` / Download the zip
+1. 下载 `ananlaquenchingprediction_1.3.1.zip` / Download the zip
 2. 解压到游戏目录的 `Mods` 文件夹 / Extract into the game's `Mods` folder
 3. 启动游戏，模组自动生效 / Launch the game, the mod activates automatically
 
