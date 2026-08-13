@@ -94,17 +94,20 @@ public sealed class PackageTask : FrostingTask<BuildContext>
 {
     public override void Run(BuildContext context)
     {
-        context.EnsureDirectoryExists("../Releases");
-        context.CleanDirectory("../Releases");
-        context.EnsureDirectoryExists($"../Releases/{context.Name}");
-        context.CopyFiles($"../{BuildContext.ProjectName}/bin/{context.BuildConfiguration}/Mods/mod/publish/*", $"../Releases/{context.Name}");
-        context.CopyDirectory($"../{BuildContext.ProjectName}/assets", $"../Releases/{context.Name}/assets");
-        context.CopyFile($"../{BuildContext.ProjectName}/modinfo.json", $"../Releases/{context.Name}/modinfo.json");
+        // 按构建配置分目录（Debug/Release 产物互不覆盖）
+        var releaseDir = $"../Releases/{context.BuildConfiguration}";
+        var outputDir = $"{releaseDir}/{context.Name}";
+        context.EnsureDirectoryExists(releaseDir);
+        context.EnsureDirectoryExists(outputDir);
+        context.CleanDirectory(outputDir);
+        context.CopyFiles($"../{BuildContext.ProjectName}/bin/{context.BuildConfiguration}/Mods/mod/publish/*", outputDir);
+        context.CopyDirectory($"../{BuildContext.ProjectName}/assets", $"{outputDir}/assets");
+        context.CopyFile($"../{BuildContext.ProjectName}/modinfo.json", $"{outputDir}/modinfo.json");
         if (context.FileExists($"../{BuildContext.ProjectName}/modicon.png"))
         {
-            context.CopyFile($"../{BuildContext.ProjectName}/modicon.png", $"../Releases/{context.Name}/modicon.png");
+            context.CopyFile($"../{BuildContext.ProjectName}/modicon.png", $"{outputDir}/modicon.png");
         }
-        context.Zip($"../Releases/{context.Name}", $"../Releases/{context.Name}_{context.Version}.zip");
+        context.Zip(outputDir, $"{releaseDir}/{context.Name}_{context.Version}.zip");
     }
 }
 

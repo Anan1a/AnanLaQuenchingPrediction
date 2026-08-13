@@ -61,7 +61,8 @@ namespace AnanLaQuenchingPrediction
                 var harmony = new HarmonyLib.Harmony(ModId);
                 var quenchType = typeof(CollectibleBehaviorQuenchable);
 
-                // 1. 补丁 IsGettingCooled — Prefix 实现宽限窗口（必碎后 QuenchGraceMs 内跳过碎裂判断），
+                // 1. 补丁 IsGettingCooled — Transpiler 消除掷骰当刻即碎竞态（跳过本刻碎裂），
+                //    Prefix 实现宽限窗口（必碎后 QuenchGraceMs 内跳过碎裂判断），
                 //    Postfix 检测 willbreak 并预警
                 var isGettingCooledMethod = quenchType.GetMethod("IsGettingCooled",
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
@@ -73,7 +74,10 @@ namespace AnanLaQuenchingPrediction
                     var postfix = new HarmonyMethod(typeof(QuenchingPredictionPatches)
                         .GetMethod(nameof(QuenchingPredictionPatches.IsGettingCooledPostfix),
                             BindingFlags.Static | BindingFlags.Public));
-                    harmony.Patch(isGettingCooledMethod, prefix: prefix, postfix: postfix);
+                    var transpiler = new HarmonyMethod(typeof(QuenchingPredictionPatches)
+                        .GetMethod(nameof(QuenchingPredictionPatches.IsGettingCooledTranspiler),
+                            BindingFlags.Static | BindingFlags.Public));
+                    harmony.Patch(isGettingCooledMethod, prefix: prefix, postfix: postfix, transpiler: transpiler);
                 }
                 else
                 {

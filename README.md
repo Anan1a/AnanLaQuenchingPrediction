@@ -11,12 +11,14 @@ A Vintage Story mod that warns you when an item is about to shatter during quenc
 ## 功能 / Features
 
 - 当物品即将在淬火中碎裂时，弹出预警提示
+- **预警必达**：掷骰当刻即碎已被消除，预警一定先于碎裂出现
 - 仅在淬火真正有碎裂风险时预警，不干扰正常淬火
 - 预警发出后不会重复提示
 - **宽限窗口**：预警后短暂延迟碎裂（默认 500ms，服务端可配置），给玩家反应捞出时间
 - **可配置**：支持开关预警，切换显示风格（底部提示栏 / 聊天栏 / 中央发现动画）
 
 - Warning prompt when an item is about to shatter during quenching
+- **Warning always delivered**: same-tick shattering after the dice roll is eliminated, the warning always appears before shattering
 - Only warns when there is an actual risk of shattering, does not interfere with normal quenching
 - Warning is only shown once per item
 - **Grace window**: brief delay before shattering after the warning (default 500ms, server-configurable), giving time to react
@@ -106,13 +108,15 @@ Message display style can be toggled via `DisplayMode` (`BottomError` / `Chat` /
 
 Uses Harmony patches to intercept the quench logic in `CollectibleBehaviorQuenchable`:
 
-1. **`IsGettingCooled` Prefix**：必碎确定后的宽限窗口期内跳过原方法（延迟碎裂），给玩家反应时间；温度降到淬火完成温度时立即放行碎裂
-2. **`IsGettingCooled` Postfix**：检测服务端设置的 `willbreak=true` 标记，通过网络通道推送预警到客户端
-3. **`trySettleWorkItem` Postfix**：淬火完成时清理临时标记，避免残留影响后续物品
+1. **`IsGettingCooled` Transpiler**：掷骰写入后直接结束方法（跳过本刻碎裂判断），消除"掷骰当刻即碎、预警失效"的竞态
+2. **`IsGettingCooled` Prefix**：必碎确定后的宽限窗口期内跳过原方法（延迟碎裂），给玩家反应时间；温度降到淬火完成温度时立即放行碎裂
+3. **`IsGettingCooled` Postfix**：检测服务端设置的 `willbreak=true` 标记，通过网络通道推送预警到客户端
+4. **`trySettleWorkItem` Postfix**：淬火完成时清理临时标记，避免残留影响后续物品
 
-1. **IsGettingCooled Prefix**: skips the original method during the grace window after the shatter is determined (delays shattering), giving the player time to react; releases immediately once temperature drops to the quench-complete temperature
-2. **IsGettingCooled Postfix**: Detects the `willbreak=true` flag set by the server, pushes a warning to the client via network channel
-3. **trySettleWorkItem Postfix**: Cleans up temporary flags on successful quench to prevent stale state
+1. **IsGettingCooled Transpiler**: ends the method right after the dice roll (skips this tick's shatter check), eliminating the same-tick-shatter race that could lose the warning
+2. **IsGettingCooled Prefix**: skips the original method during the grace window after the shatter is determined (delays shattering), giving the player time to react; releases immediately once temperature drops to the quench-complete temperature
+3. **IsGettingCooled Postfix**: Detects the `willbreak=true` flag set by the server, pushes a warning to the client via network channel
+4. **trySettleWorkItem Postfix**: Cleans up temporary flags on successful quench to prevent stale state
 
 ---
 
@@ -136,6 +140,6 @@ When installed alongside [AnanLa's Quenching Guarantee](https://mods.vintagestor
 
 ## 安装 / Installation
 
-1. 下载 `ananlaquenchingprediction_1.4.0.zip` / Download the zip
+1. 下载 `ananlaquenchingprediction_1.5.0.zip` / Download the zip
 2. 解压到游戏目录的 `Mods` 文件夹 / Extract into the game's `Mods` folder
 3. 启动游戏，模组自动生效 / Launch the game, the mod activates automatically

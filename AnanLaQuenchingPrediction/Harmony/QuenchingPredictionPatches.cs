@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using HarmonyLib;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
@@ -92,6 +95,50 @@ namespace AnanLaQuenchingPrediction.Harmony
                 // 任何异常都放行原方法，保证不破坏游戏
                 return true;
             }
+        }
+
+        /// <summary>
+        /// 在原版 <c>IsGettingCooled</c> 的"掷骰写入 willbreak"之后插入 <c>ret</c> 直接结束方法，
+        /// 跳过本刻的碎裂判断与执行——消除"掷骰当刻即碎、预警失效"的竞态
+        /// （原版掷骰后同刻检查碎裂，5% 随机命中时玩家根本来不及看到预警）。
+        /// 插入 ret 而非跳转到碎裂块结束：本方法为 void（无返回值负担）且每刻执行
+        /// （错过本刻不影响下次完整执行），直接结束最安全、最简（无需定位跳转目标）。
+        /// 插入点位于掷骰 if 块内，仅在掷骰当刻执行（非掷骰时刻被 HasAttribute 的 brtrue 跳过）。
+        /// 配合 Prefix 的宽限窗口：本 Transpiler 只解决"掷骰当刻"竞态，窗口期仍由 Prefix 负责。
+        /// </summary>
+        /// <remarks>Harmony Transpiler — 补丁目标: <see cref="CollectibleBehaviorQuenchable"/>.IsGettingCooled。
+        /// 匹配失败时原样返回指令，安全降级为无此修复的原版行为。</remarks>
+        /// <param name="instructions">原方法的 IL 指令序列。</param>
+        public static IEnumerable<CodeInstruction> IsGettingCooledTranspiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var list = instructions.ToList();
+
+#if DEBUG
+            // ── 调试（仅 Debug 构建生效，Release 自动剔除）：将原版"每刻 5% 提前碎"提高到 100%，
+            //    快速验证窗口期后碎裂闭环 ──
+            // 可调参数：下方 operand = 1.0 即调试概率（0~1）；匹配的 0.05 是原版值（勿改）
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i].opcode == OpCodes.Ldc_R8 && list[i].operand is double d && Math.Abs(d - 0.05) < 1e-9)
+                {
+                    list[i].operand = 1.0;   // ← 调试概率（可调，0~1）
+                    break;
+                }
+            }
+#endif
+
+            // 锚点：掷骰写入 SetBool（方法内唯一）→ 在其后插入 ret（跳过本刻碎裂判断与执行）
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i].opcode == OpCodes.Callvirt && list[i].operand is MethodInfo m && m.Name == "SetBool")
+                {
+                    list.Insert(i + 1, new CodeInstruction(OpCodes.Ret));
+                    return list;
+                }
+            }
+
+            ServerApi?.Logger.Warning("[Transpiler] 未匹配到掷骰写入，立即破碎修复失效。游戏版本可能已变更。");
+            return instructions;
         }
 
         /// <summary>
