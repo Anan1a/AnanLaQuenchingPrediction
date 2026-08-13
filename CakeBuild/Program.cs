@@ -98,8 +98,8 @@ public sealed class PackageTask : FrostingTask<BuildContext>
         var releaseDir = $"../Releases/{context.BuildConfiguration}";
         var outputDir = $"{releaseDir}/{context.Name}";
         context.EnsureDirectoryExists(releaseDir);
+        context.CleanDirectory(releaseDir);   // 清空本配置目录（含旧 zip 与旧解压目录），只留当前版本
         context.EnsureDirectoryExists(outputDir);
-        context.CleanDirectory(outputDir);
         context.CopyFiles($"../{BuildContext.ProjectName}/bin/{context.BuildConfiguration}/Mods/mod/publish/*", outputDir);
         context.CopyDirectory($"../{BuildContext.ProjectName}/assets", $"{outputDir}/assets");
         context.CopyFile($"../{BuildContext.ProjectName}/modinfo.json", $"{outputDir}/modinfo.json");
