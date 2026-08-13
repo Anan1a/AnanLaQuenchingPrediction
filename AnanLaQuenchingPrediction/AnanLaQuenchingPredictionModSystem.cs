@@ -31,20 +31,29 @@ namespace AnanLaQuenchingPrediction
         private const string QuenchLastMsgKey = GuaranteeModId + ":quenchLastMsg";
         /// <summary>客户端配置文件。</summary>
         private const string ClientConfigFile = ModId + "_client_config.json";
+        /// <summary>服务端配置文件。</summary>
+        private const string ServerConfigFile = ModId + "_server_config.json";
 
         /// <summary>
-        /// 服务端初始化入口。注册网络通道、安装 Harmony 补丁。
+        /// 服务端初始化入口。加载配置、注册网络通道、安装 Harmony 补丁。
         /// </summary>
         public override void StartServerSide(ICoreServerAPI api)
         {
             base.StartServerSide(api);
 
+            // ── 加载/初始化服务端配置（控制宽限窗口时长）──
+            var serverConfig = api.LoadModConfig<ServerConfig>(ServerConfigFile);
+            serverConfig ??= new ServerConfig();
+            // 每次都回写，确保旧配置自动补充新增字段
+            api.StoreModConfig(serverConfig, ServerConfigFile);
+
             // ── 注册服务端网络通道 ──
             QuenchingPredictionPatches.NotificationChannel = api.Network.RegisterChannel("quenchPredict")
                 .RegisterMessageType<PredictionPacket>();
 
-            // ── 向 Harmony 补丁注入依赖 ──
+            // ── 向 Harmony 补丁注入依赖（API 引用 + 缓存配置）──
             QuenchingPredictionPatches.ServerApi = api;
+            QuenchingPredictionPatches.CachedConfig = serverConfig;
 
             // ═══ Harmony 补丁（显式 Patch 避免 PatchAll 对 private 方法的兼容性问题）═══
             try
@@ -52,15 +61,19 @@ namespace AnanLaQuenchingPrediction
                 var harmony = new HarmonyLib.Harmony(ModId);
                 var quenchType = typeof(CollectibleBehaviorQuenchable);
 
-                // 1. 补丁 IsGettingCooled Postfix — 检测 willbreak 并预警
+                // 1. 补丁 IsGettingCooled — Prefix 实现宽限窗口（必碎后 QuenchGraceMs 内跳过碎裂判断），
+                //    Postfix 检测 willbreak 并预警
                 var isGettingCooledMethod = quenchType.GetMethod("IsGettingCooled",
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (isGettingCooledMethod != null)
                 {
+                    var prefix = new HarmonyMethod(typeof(QuenchingPredictionPatches)
+                        .GetMethod(nameof(QuenchingPredictionPatches.IsGettingCooledPrefix),
+                            BindingFlags.Static | BindingFlags.Public));
                     var postfix = new HarmonyMethod(typeof(QuenchingPredictionPatches)
                         .GetMethod(nameof(QuenchingPredictionPatches.IsGettingCooledPostfix),
                             BindingFlags.Static | BindingFlags.Public));
-                    harmony.Patch(isGettingCooledMethod, postfix: postfix);
+                    harmony.Patch(isGettingCooledMethod, prefix: prefix, postfix: postfix);
                 }
                 else
                 {

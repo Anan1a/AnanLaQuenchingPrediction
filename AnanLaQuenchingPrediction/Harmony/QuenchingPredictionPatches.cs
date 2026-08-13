@@ -1,4 +1,6 @@
 using System;
+using System.Reflection;
+using HarmonyLib;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
@@ -8,6 +10,22 @@ namespace AnanLaQuenchingPrediction.Harmony
 {
     public static class QuenchingPredictionPatches
     {
+        /// <summary>缓存的服务端配置，在 ModSystem.StartServerSide 中注入（与姊妹项目模式一致）。</summary>
+        internal static Config.ServerConfig CachedConfig;
+
+        /// <summary>原版碎裂标记键（TempAttributes，由原版 IsGettingCooled 掷骰写入）。</summary>
+        private const string WillBreakKey = "willbreak";
+
+        /// <summary>已预警标记键（TempAttributes），防止同物品同轮淬火重复预警。</summary>
+        private const string WarnedKey = "breakPredictionWarned";
+
+        /// <summary>宽限窗口起点标记键（TempAttributes），由 Prefix 首次看到必碎时写入。</summary>
+        private const string QuenchGraceStartKey = "quenchPredictedStartMs";
+
+        /// <summary>私有字段 metalProps 的反射引用（读取淬火完成温度 settledTemperature）。缺失时返回 null，温度边界修复降级。</summary>
+        private static readonly FieldInfo MetalPropsField =
+            AccessTools.Field(typeof(CollectibleBehaviorQuenchable), "metalProps");
+
         /// <summary>服务端 API 引用，在 ModSystem.StartServerSide 中赋值。</summary>
         internal static ICoreServerAPI ServerApi { get; set; }
 
@@ -26,6 +44,58 @@ namespace AnanLaQuenchingPrediction.Harmony
 
         /// <summary>
         /// 原方法 v1.22.3: <c>private void IsGettingCooled(IWorldAccessor world, ItemSlot slot, Vec3d pos, float dt, float temperature)</c>
+        /// 每刻执行淬火冷却逻辑，在达到碎裂条件时设置 willbreak=true。
+        /// 此 Prefix 实现宽限窗口：本轮掷骰确定必碎后，在 <see cref="Config.ServerConfig.GraceWindowMs"/> 毫秒内
+        /// 跳过原方法（本刻不执行碎裂判断），给玩家预警后的反应时间。
+        /// 温度边界：一旦温度降到淬火完成温度（settledTemperature），立即放行碎裂——
+        /// 阻止"窗口期内冷却到底 → 结算路径（trySettleWorkItem）抢在碎裂前完成"的必碎逃逸。
+        /// 注意：掷骰当刻本 Prefix 先于原版执行、看不到本刻掷骰结果，故掷骰当刻的竞态（5% 提前碎）仍保留。
+        /// </summary>
+        /// <remarks>Harmony Prefix — 补丁目标: <see cref="CollectibleBehaviorQuenchable"/>.IsGettingCooled。
+        /// 返回 false 跳过原方法（Postfix 仍执行，预警不受影响）。</remarks>
+        /// <param name="__instance">目标类实例，访问私有 metalProps 读取淬火完成温度。</param>
+        /// <param name="world">游戏世界访问器。</param>
+        /// <param name="slot">当前淬火物品所在的物品槽。</param>
+        /// <param name="temperature">本帧降温后的温度（原方法参数）。</param>
+        public static bool IsGettingCooledPrefix(CollectibleBehaviorQuenchable __instance,
+            IWorldAccessor world, ItemSlot slot, float temperature)
+        {
+            try
+            {
+                // ── 守卫：客户端旁路（与原版 IsGettingCooled 一致，slot 非空由调用链保证）──
+                // 配置未注入 → 不干预（与姊妹项目判空跳过一致）
+                if (world.Side == EnumAppSide.Client || CachedConfig == null) return true;
+                var attrs = slot.Itemstack.TempAttributes;
+
+                // ── 窗口起点：本轮掷骰确定必碎时记录 ──
+                // 标记保留到 willbreak 生命周期结束（settle 清理/碎裂），不随窗口过期删除，
+                // 否则 willbreak 残留时"快进快出"会反复刷新窗口，突破 100% 碎裂概率
+                long start = attrs.GetLong(QuenchGraceStartKey, -1);
+                if (start < 0)
+                {
+                    if (!attrs.GetBool(WillBreakKey)) return true;
+                    start = world.ElapsedMilliseconds;
+                    attrs.SetLong(QuenchGraceStartKey, start);
+                }
+
+                // ── 温度已降到淬火完成温度 → 窗口期立即结束，放行碎裂（阻止结算路径逃逸必碎）──
+                // 碎裂检查（IsGettingCooled）先于结算（SetTemperature）执行，放行后碎裂优先命中
+                var metalProps = MetalPropsField?.GetValue(__instance) as CollectibleBehaviorQuenchable.MetalPropertyVariant;
+                if (metalProps != null && temperature <= metalProps.settledTemperature)
+                    return true;
+
+                // ── 窗口期内跳过原方法（本刻不碎裂），过期放行恢复（时长由服务端配置决定）──
+                return world.ElapsedMilliseconds - start >= CachedConfig.GraceWindowMs;
+            }
+            catch
+            {
+                // 任何异常都放行原方法，保证不破坏游戏
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// 原方法 v1.22.3: <c>private void IsGettingCooled(IWorldAccessor world, ItemSlot slot, Vec3d pos, float dt, float temperature)</c>
         /// 每帧执行淬火冷却逻辑，在达到碎裂条件时设置 willbreak=true。
         /// 此 Postfix 在之后检测 willbreak 并发送预警。
         /// </summary>
@@ -38,9 +108,9 @@ namespace AnanLaQuenchingPrediction.Harmony
             {
                 // ── 守卫条件 ──
                 // 跳过条件：客户端/空槽/willbreak 未触发/已预警
-                if (world.Side == EnumAppSide.Client || slot.Empty ||
-                    !slot.Itemstack.TempAttributes.GetBool("willbreak") ||
-                    slot.Itemstack.TempAttributes.GetBool("breakPredictionWarned")) return;
+                if (world.Side == EnumAppSide.Client || slot.Empty) return;
+                var attrs = slot.Itemstack.TempAttributes;
+                if (!attrs.GetBool(WillBreakKey) || attrs.GetBool(WarnedKey)) return;
 
                 // ── 通过槽位回溯所属玩家 ──
                 var player = FindPlayerFromSlot(slot);
@@ -50,7 +120,7 @@ namespace AnanLaQuenchingPrediction.Harmony
                 SendWarning(player, PredictionEventType.BreakWarning);
 
                 // ── 标记已预警，防止下一帧重复触发 ──
-                slot.Itemstack.TempAttributes.SetBool("breakPredictionWarned", true);
+                attrs.SetBool(WarnedKey, true);
             }
             catch (Exception ex)
             {
@@ -75,7 +145,8 @@ namespace AnanLaQuenchingPrediction.Harmony
                     __instance.GetState(itemstack) != "settled") return;
 
                 // 清理临时标记，避免残留影响后续淬火
-                itemstack.TempAttributes.RemoveAttribute("breakPredictionWarned");
+                itemstack.TempAttributes.RemoveAttribute(WarnedKey);
+                itemstack.TempAttributes.RemoveAttribute(QuenchGraceStartKey);
             }
             catch (Exception ex)
             {

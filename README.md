@@ -13,11 +13,13 @@ A Vintage Story mod that warns you when an item is about to shatter during quenc
 - 当物品即将在淬火中碎裂时，弹出预警提示
 - 仅在淬火真正有碎裂风险时预警，不干扰正常淬火
 - 预警发出后不会重复提示
+- **宽限窗口**：预警后短暂延迟碎裂（默认 500ms，服务端可配置），给玩家反应捞出时间
 - **可配置**：支持开关预警，切换显示风格（底部提示栏 / 聊天栏 / 中央发现动画）
 
 - Warning prompt when an item is about to shatter during quenching
 - Only warns when there is an actual risk of shattering, does not interfere with normal quenching
 - Warning is only shown once per item
+- **Grace window**: brief delay before shattering after the warning (default 500ms, server-configurable), giving time to react
 - **Configurable**: toggle warnings on/off, choose display style (BottomError / Chat / Discovery)
 
 ---
@@ -52,9 +54,11 @@ required by default (modinfo does not set `requiredOnClient: false`).
 
 ## 配置 / Configuration
 
-模组启动后在 `ModConfig` 目录生成 `ananlaquenchingprediction_client_config.json`，可手动编辑：
+模组启动后在 `ModConfig` 目录生成两个配置文件，可手动编辑：
 
-The mod generates `ananlaquenchingprediction_client_config.json` in the `ModConfig` folder on first launch:
+The mod generates two config files in the `ModConfig` folder on first launch:
+
+**客户端 / Client** — `ananlaquenchingprediction_client_config.json`:
 
 ```json
 {
@@ -65,6 +69,16 @@ The mod generates `ananlaquenchingprediction_client_config.json` in the `ModConf
     // BottomError = 底部提示栏（默认）/ bottom error bar (default)
     // Chat = 聊天栏 / chat bar
     // Discovery = 中央发现动画 / center discovery animation
+}
+```
+
+**服务端 / Server** — `ananlaquenchingprediction_server_config.json`:
+
+```json
+{
+    "GraceWindowMs": 500
+    // 预警宽限窗口（毫秒）/ Grace window (ms):
+    // 必碎确定后延迟碎裂的时长，供玩家反应捞出。默认 500（≈10 刻 @20tps），设 0 关闭窗口期（仅保留预警）。
 }
 ```
 
@@ -92,11 +106,13 @@ Message display style can be toggled via `DisplayMode` (`BottomError` / `Chat` /
 
 Uses Harmony patches to intercept the quench logic in `CollectibleBehaviorQuenchable`:
 
-1. **`IsGettingCooled` Postfix**：检测服务端设置的 `willbreak=true` 标记，通过网络通道推送预警到客户端
-2. **`trySettleWorkItem` Postfix**：淬火完成时清理临时标记，避免残留影响后续物品
+1. **`IsGettingCooled` Prefix**：必碎确定后的宽限窗口期内跳过原方法（延迟碎裂），给玩家反应时间；温度降到淬火完成温度时立即放行碎裂
+2. **`IsGettingCooled` Postfix**：检测服务端设置的 `willbreak=true` 标记，通过网络通道推送预警到客户端
+3. **`trySettleWorkItem` Postfix**：淬火完成时清理临时标记，避免残留影响后续物品
 
-1. **IsGettingCooled Postfix**: Detects the `willbreak=true` flag set by the server, pushes a warning to the client via network channel
-2. **trySettleWorkItem Postfix**: Cleans up temporary flags on successful quench to prevent stale state
+1. **IsGettingCooled Prefix**: skips the original method during the grace window after the shatter is determined (delays shattering), giving the player time to react; releases immediately once temperature drops to the quench-complete temperature
+2. **IsGettingCooled Postfix**: Detects the `willbreak=true` flag set by the server, pushes a warning to the client via network channel
+3. **trySettleWorkItem Postfix**: Cleans up temporary flags on successful quench to prevent stale state
 
 ---
 
@@ -120,6 +136,6 @@ When installed alongside [AnanLa's Quenching Guarantee](https://mods.vintagestor
 
 ## 安装 / Installation
 
-1. 下载 `ananlaquenchingprediction_1.3.1.zip` / Download the zip
+1. 下载 `ananlaquenchingprediction_1.4.0.zip` / Download the zip
 2. 解压到游戏目录的 `Mods` 文件夹 / Extract into the game's `Mods` folder
 3. 启动游戏，模组自动生效 / Launch the game, the mod activates automatically
